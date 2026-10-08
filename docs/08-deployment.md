@@ -1,5 +1,13 @@
 # 点修 · 静态部署准备
 
+## 当前生产环境（2026-10-08 更新）
+
+实际使用 Cloudflare Workers Git 集成部署静态产物，Worker 名称为 `pixel-editor`。构建命令 `npm run build`，部署命令 `npx wrangler deploy --assets ./out --name pixel-editor --compatibility-date 2026-10-06`，项目根路径 `/`，Node.js 22.16.0。不使用 OpenNext。
+
+正式域名为 https://dianxiu.top/，编辑器为 https://dianxiu.top/editor/。已检查 HTTPS、两个页面、抽查的 CSS/JS 与未知路径 404 均正常；尚未进行线上完整编辑流程验收。下方 Pages 章节保留为原方案参考，以本节为当前部署状态。
+
+搜索配置包含独立页面 canonical、首页 Open Graph、robots.txt 和 sitemap.xml。Google Search Console 尚待用户账号验证与提交：添加网域属性 `dianxiu.top`，将平台生成的 TXT 验证值添加到 Cloudflare DNS（名称 `@`），验证后提交 `https://dianxiu.top/sitemap.xml`，使用网址检查申请首页收录。TXT 验证记录应长期保留；不要使用示例或自编验证值。提交不保证 Google 收录或排名。
+
 当前方案为 Next.js 静态导出，不需要生产 Node.js 服务、数据库或图片上传接口。部署平台已选择 Cloudflare Pages Git 集成，使用平台提供的 pages.dev 地址。Git 仓库为 https://github.com/3scarecrow/pixel-editor，main 已推送。Cloudflare Git 连接授权与首次部署待完成。本轮只准备发布资料，尚未上线。
 
 ## 发布产物
