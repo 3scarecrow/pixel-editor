@@ -1,0 +1,27 @@
+# 站点配置示例：接入已有 HTTPS 反向代理，或为该站点另行配置 TLS。
+# 将域名、静态目录和现有服务器配置核对后再启用。
+server {
+    listen 80;
+    server_name _;
+    root /srv/dianxiu/current;
+    index index.html;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    location / {
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+    }
+
+    location /_next/static/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+    }
+
+    error_page 404 /404.html;
+}

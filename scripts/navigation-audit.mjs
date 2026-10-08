@@ -1,0 +1,16 @@
+import { chromium } from '@playwright/test';
+import { encode } from 'fast-png';
+import { writeFile } from 'node:fs/promises';
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:960}});
+const result={responses:[],dialogs:[],runtimeErrors:[]};
+page.on('response',r=>{if(r.status()>=400)result.responses.push({url:r.url(),status:r.status()});});
+page.on('pageerror',e=>result.runtimeErrors.push(e.message));
+page.on('dialog',async d=>{result.dialogs.push({type:d.type(),message:d.message()});await d.dismiss();});
+await page.goto('http://127.0.0.1:3102/');await page.getByRole('link',{name:'打开编辑器'}).click();await page.getByTestId('file-input').waitFor();result.homeToEditorWorks=true;
+const data=new Uint8Array(16*16*4).fill(255);await page.getByTestId('file-input').setInputFiles({name:'navigation.png',mimeType:'image/png',buffer:Buffer.from(encode({width:16,height:16,channels:4,data}))});await page.getByRole('status').filter({hasText:'已导入'}).waitFor();
+const box=await page.getByTestId('pixel-canvas').boundingBox();await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+result.edited=await page.getByRole('button',{name:'撤销',exact:true}).isEnabled();
+await page.getByRole('link',{name:'点修首页'}).click();await page.waitForTimeout(800);result.urlAfterLeavingEditedProject=page.url();result.lostWithoutConfirmation=result.edited&&result.dialogs.length===0&&!page.url().includes('/editor');
+await page.getByRole('link',{name:'打开编辑器'}).click();await page.getByTestId('file-input').waitFor();result.backToEditorIsEmpty=await page.getByRole('button',{name:'清空',exact:true}).isDisabled();
+await writeFile('artifacts/navigation-audit.json',JSON.stringify(result,null,2));console.log(result);await browser.close();
