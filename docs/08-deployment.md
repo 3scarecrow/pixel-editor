@@ -1,6 +1,6 @@
 # 点修 · 静态部署准备
 
-当前方案为 Next.js 静态导出，不需要生产 Node.js 服务、数据库或图片上传接口。部署平台已选择 Cloudflare Pages Git 集成，使用平台提供的 pages.dev 地址。Git 仓库和账号授权待完成。本轮只准备发布资料，尚未上线。
+当前方案为 Next.js 静态导出，不需要生产 Node.js 服务、数据库或图片上传接口。部署平台已选择 Cloudflare Pages Git 集成，使用平台提供的 pages.dev 地址。Git 仓库指定为 https://github.com/3scarecrow/pixel-editor，本地已设置 origin；远程仓库是否已创建尚无法确认，当前 GitHub 授权失败。本轮只准备发布资料，尚未上线。
 
 ## 发布产物
 
@@ -48,7 +48,7 @@ Cloudflare Pages / Vercel 等平台可托管 out/，但平台专用配置将在�
 
 | 配置 | 值 |
 | --- | --- |
-| 项目名 | dianxiu（若不可用则选择其他名字） |
+| 项目名 | pixel-editor（若不可用则选择其他名字） |
 | 生产分支 | main |
 | Framework preset | Next.js (Static HTML Export) |
 | 构建命令 | npm run build |
@@ -66,3 +66,9 @@ _headers 随 Next.js public/ 复制进 out/，提供基础响应头及哈希资�
 官方依据（2026-10-08 核对）：
 - https://developers.cloudflare.com/pages/framework-guides/nextjs/deploy-a-static-nextjs-site/
 - https://developers.cloudflare.com/pages/get-started/git-integration/
+
+## 当前连接状态
+
+指定账号：3scarecrow，仓库：pixel-editor，远程地址：https://github.com/3scarecrow/pixel-editor.git。GitHub HTTPS 访问返回 Invalid username or token，尚未推送或创建 Cloudflare 项目。Cloudflare 项目名称使用 pixel-editor，实际 pages.dev 地址以成功部署结果为准。
+
+恢复 GitHub 本机授权并确认空仓库已创建后，可在项目目录执行 `git push -u origin main`。本轮不重置 Keychain 中已有凭据，不要求用户提供明文 Token。随后在 Cloudflare 授权该仓库，采用上面的静态构建配置。
