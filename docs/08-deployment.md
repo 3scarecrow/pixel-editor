@@ -71,4 +71,17 @@ _headers 随 Next.js public/ 复制进 out/，提供基础响应头及哈希资�
 
 GitHub 官方网页登录授权已完成，已验证登录账号为 3scarecrow。代码已推送至 https://github.com/3scarecrow/pixel-editor 的 main 分支。当前电脑终端访问 GitHub 需要使用已运行的本地代理 http://127.0.0.1:7897；没有修改全局代理设置，也没有保存代理密码或明文 Token。
 
-Cloudflare 控制台自动操作连接超时，尚未创建 Pages 项目或获取真实访问地址。下一步需在 Cloudflare 浏览器页面授权 GitHub 仓库，并使用上方构建参数触发首次部署。没有使用直接上传替代 Git 集成。
+Cloudflare 控制台自动操作连接超时，尚未获取真实 Pages 访问地址。用户提供的首次部署日志显示创建了名为 dx 的 Workers 项目，构建成功，但 Workers 部署失败。下一步需在 Cloudflare 浏览器页面创建 Pages 项目，选择 GitHub 仓库，并使用上方构建参数触发部署。没有使用直接上传替代 Git 集成。
+
+## 首次部署失败排查：误选 Workers
+
+2026-10-08 的日志中，`npm run build` 已成功。随后出现 `Executing user deploy command: npx wrangler deploy`、`Worker Name: dx` 和 `Output Directory: .next`，说明部署走的是 Workers 流程。Wrangler 自动尝试安装 OpenNext 并构建，最终因缺少 `.next/standalone/.next/server/pages-manifest.json` 失败。
+
+解决步骤：
+
+1. 返回 Workers & Pages，创建应用时进入 **Pages** 标签页，再选择导入现有 Git 仓库。
+2. 选择 `3scarecrow/pixel-editor`，生产分支 `main`。
+3. 选择 `Next.js (Static HTML Export)`，构建命令 `npm run build`，输出目录 `out`，根目录留空，环境变量 `NODE_VERSION=22.16.0`。
+4. 保存并部署。Pages 的这套流程无需填写 `npx wrangler deploy`；若仍有独立的 Workers 部署命令字段，应返回创建页面检查产品选择。
+
+无需为此次错误修改应用代码、安装 OpenNext 或将输出目录改为 `.next`。日志中的自动迁移发生在 Cloudflare 临时构建环境，未修改 GitHub 源码。现有失败的 dx Worker 可以暂时保留，不影响创建 Pages 项目。
