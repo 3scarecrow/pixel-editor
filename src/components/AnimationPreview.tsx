@@ -1,9 +1,11 @@
 "use client";
+import { useLanguage } from "@/i18n/LanguageProvider";
 import { useEffect, useRef, useState } from "react";
 import { ChevronFirst, ChevronLast, Play, Pause, Info } from "lucide-react";
 import { EditorStore } from "@/core/model";
 import { Thumbnail } from "./Thumbnail";
 export function AnimationPreview({ store }: { store: EditorStore }) {
+  const { t } = useLanguage();
   const images = store.visibleImages,
     a = store.project.animation;
   const [playing, setPlaying] = useState(false),
@@ -50,14 +52,19 @@ export function AnimationPreview({ store }: { store: EditorStore }) {
   return (
     <aside className="preview-panel">
       <h2>
-        动画预览 <span className="live-tag">PREVIEW</span>
+        {t("动画预览")}
+        <span className="live-tag">PREVIEW</span>
       </h2>
       <div className="preview-image checker">
-        {current ? <Thumbnail image={current} /> : <span>等待导入帧</span>}
+        {current ? (
+          <Thumbnail image={current} />
+        ) : (
+          <span>{t("等待导入帧")}</span>
+        )}
       </div>
       <div className="playback">
         <button
-          aria-label="上一帧"
+          aria-label={t("上一帧")}
           disabled={!images.length}
           onClick={() => {
             setPlaying(false);
@@ -68,14 +75,14 @@ export function AnimationPreview({ store }: { store: EditorStore }) {
         </button>
         <button
           className="play-button"
-          aria-label={playing ? "暂停" : "播放"}
+          aria-label={playing ? t("暂停") : t("播放")}
           disabled={images.length < 2}
           onClick={() => setPlaying(!playing)}
         >
           {playing ? <Pause size={21} /> : <Play size={21} />}
         </button>
         <button
-          aria-label="下一帧"
+          aria-label={t("下一帧")}
           disabled={!images.length}
           onClick={() => {
             setPlaying(false);
@@ -92,11 +99,11 @@ export function AnimationPreview({ store }: { store: EditorStore }) {
             checked={loop}
             onChange={(e) => setLoop(e.target.checked)}
           />{" "}
-          循环播放
+          {t("循环播放")}
         </label>
         <label className="fps-input">
           <input
-            aria-label="帧率"
+            aria-label={t("帧率")}
             type="number"
             min={1}
             max={30}
@@ -108,19 +115,19 @@ export function AnimationPreview({ store }: { store: EditorStore }) {
         </label>
       </div>
       {images.length === 1 && (
-        <p className="single-frame-hint">添加更多帧后可预览动画</p>
+        <p className="single-frame-hint">{t("添加更多帧后可预览动画")}</p>
       )}
       <div className="preview-details">
         <div>
-          <span>帧尺寸</span>
+          <span>{t("帧尺寸")}</span>
           <span>{a ? `${a.width} × ${a.height}` : "—"}</span>
         </div>
         <div>
-          <span>帧数</span>
+          <span>{t("帧数")}</span>
           <span>{images.length}</span>
         </div>
         <div>
-          <span>当前预览</span>
+          <span>{t("当前预览")}</span>
           <span data-testid="preview-index">
             {images.length
               ? `${Math.min(index + 1, images.length)} / ${images.length}`
@@ -129,7 +136,8 @@ export function AnimationPreview({ store }: { store: EditorStore }) {
         </div>
       </div>
       <p className="panel-note">
-        <Info size={14} /> 切回图片编辑会保留所有修改
+        <Info size={14} />
+        {t("切回图片编辑会保留所有修改")}
       </p>
     </aside>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/i18n/LanguageProvider";
 import { BrandMark } from "@/components/BrandMark";
 import {
   useCallback,
@@ -50,13 +51,15 @@ import { StatusBar, type StatusHandle } from "./StatusBar";
 import { ColorPanel } from "./ColorPanel";
 import { Thumbnail } from "./Thumbnail";
 import { AnimationPreview } from "./AnimationPreview";
-const tools = [
-  { id: "pencil", label: "画笔", key: "B", icon: Pencil },
-  { id: "picker", label: "吸管", key: "I", icon: Pipette },
-  { id: "eraser", label: "橡皮擦", key: "E", icon: Eraser },
-  { id: "pan", label: "平移", key: "H", icon: Hand },
-];
 export default function Editor() {
+  const { t, language } = useLanguage();
+  const tools = [
+    { id: "pencil", label: t("画笔"), key: "B", icon: Pencil },
+    { id: "picker", label: t("吸管"), key: "I", icon: Pipette },
+    { id: "eraser", label: t("橡皮擦"), key: "E", icon: Eraser },
+    { id: "pan", label: t("平移"), key: "H", icon: Hand },
+  ];
+
   const [store] = useState(() => new EditorStore());
   useSyncExternalStore(store.subscribe, store.getVersion, () => 0);
   const project = store.project,
@@ -68,9 +71,10 @@ export default function Editor() {
     [grid, setGrid] = useState(true),
     [zoom, setZoom] = useState(8),
     [selected, setSelected] = useState<Set<string>>(new Set()),
-    [message, setMessage] = useState<{ text: string; error: boolean } | null>(
-      null,
-    ),
+    [message, setMessage] = useState<{
+      text: string;
+      error: boolean;
+    } | null>(null),
     [busy, setBusy] = useState(""),
     [progress, setProgress] = useState(0),
     [exportMenu, setExportMenu] = useState(false),
@@ -83,8 +87,8 @@ export default function Editor() {
     dragId = useRef<string | null>(null),
     busyRef = useRef("");
   const notify = useCallback(
-    (text: string, error = true) => setMessage({ text, error }),
-    [],
+    (text: string, error = true) => setMessage({ text: t(text), error }),
+    [t],
   );
   const action = useCallback(
     (fn: () => void) => {
@@ -137,6 +141,7 @@ export default function Editor() {
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement ||
         (e.target as HTMLElement).isContentEditable
       )
         return;
@@ -210,7 +215,7 @@ export default function Editor() {
   const importFiles = async (files: File[]) => {
     if (!files.length) return;
     if (busyRef.current) {
-      notify("请等待当前任务完成");
+      notify(t("请等待当前任务完成"));
       return;
     }
     canvas.current?.finish();
@@ -219,12 +224,14 @@ export default function Editor() {
       sequence = project.animation?.frameIds.join(",") ?? "";
     try {
       if (files.reduce((n, f) => n + f.size, 0) > LIMITS.bytes)
-        throw Error("一次导入文件总大小不能超过 50 MiB");
+        throw Error(t("一次导入文件总大小不能超过 50 MiB"));
       if (files.length + project.images.length > LIMITS.images)
-        throw Error("最多导入 100 张图片");
-      setTask("导入图片");
+        throw Error(t("最多导入 100 张图片"));
+      setTask(t("导入图片"));
       const sorted = [...files].sort((a, b) =>
-        a.name.localeCompare(b.name, "zh-CN", { numeric: true }),
+        a.name.localeCompare(b.name, language === "en" ? "en" : "zh-CN", {
+          numeric: true,
+        }),
       );
       const payload = await Promise.all(
         sorted.map(async (f) => ({
@@ -251,12 +258,17 @@ export default function Editor() {
         store.project.mode !== originMode ||
         (store.project.animation?.frameIds.join(",") ?? "") !== sequence
       )
-        throw Error("工作区已改变，请重新导入");
+        throw Error(t("工作区已改变，请重新导入"));
       store.import(
         decoded.map((i) => createImage(i.name, i.width, i.height, i.pixels)),
       );
       notify(
-        `已导入 ${decoded.length} 张${originMode === "animation" ? "动画帧" : "图片"}`,
+        t(
+          originMode === "animation"
+            ? "已导入 {0} 张动画帧"
+            : "已导入 {0} 张图片",
+          decoded.length,
+        ),
         false,
       );
     } catch (e) {
@@ -277,7 +289,7 @@ export default function Editor() {
     if (!list.length) return;
     const originalId = store.project.id;
     try {
-      setTask(all ? "打包导出" : "导出 PNG");
+      setTask(all ? t("打包导出") : t("导出 PNG"));
       const snapshots = list.map((i) => ({ ...i, pixels: i.pixels.slice() }));
       const bytes = await client.current!.request<Uint8Array>(
         all ? "zip" : "png",
@@ -292,8 +304,8 @@ export default function Editor() {
       a.href = url;
       a.download = all
         ? mode === "animation"
-          ? "点修-动画帧.zip"
-          : "点修-图片.zip"
+          ? t("点修-动画帧.zip")
+          : t("点修-图片.zip")
         : mode === "animation"
           ? `frame-${String(images.findIndex((i) => i.id === list[0].id) + 1).padStart(3, "0")}.png`
           : exportNames(list, false)[0];
@@ -302,9 +314,9 @@ export default function Editor() {
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       if (store.project.id === originalId) store.markExported(snapshots);
-      notify("已生成文件，请在浏览器下载记录中查看", false);
+      notify(t("已生成文件，请在浏览器下载记录中查看"), false);
     } catch (e) {
-      notify(`导出失败：${(e as Error).message}`);
+      notify(t("导出失败：{0}", t((e as Error).message)));
     } finally {
       setTask("");
     }
@@ -359,35 +371,41 @@ export default function Editor() {
           i.height !== project.animation!.height,
       ));
   return (
-    <main className="editor-shell">
+    <main className="editor-shell" data-mode={mode}>
       <header className="app-bar">
-        <a href="/" className="brand" aria-label="点修首页">
+        <a href="/" className="brand" aria-label={t("点修首页")}>
           <BrandMark />
-          <strong>点修</strong>
+          <strong>{t("点修")}</strong>
         </a>
-        <div className="mode-switch" role="group" aria-label="编辑模式">
+        <div
+          className="mode-switch"
+          data-mode={mode}
+          role="group"
+          aria-label={t("编辑模式")}
+        >
           <button
             className={mode === "images" ? "active" : ""}
             onClick={() => switchMode("images")}
             disabled={!!busy}
           >
-            图片编辑
+            {t("图片编辑")}
           </button>
           <button
             className={mode === "animation" ? "active" : ""}
             onClick={() => switchMode("animation")}
             disabled={!!busy}
           >
-            动画编辑
+            {t("动画编辑")}
           </button>
         </div>
         <button
           className="clear-project"
           onClick={requestReset}
           disabled={!!busy || !project.images.length}
-          title="清空当前项目的图片与历史"
+          title={t("清空当前项目的图片与历史")}
         >
-          <Trash2 size={15} /> 清空
+          <Trash2 size={15} />
+          {t("清空")}
         </button>
         <div className="bar-spacer" />
         <button
@@ -396,13 +414,13 @@ export default function Editor() {
           disabled={!!busy}
         >
           <FolderOpen size={17} />
-          <span>{mode === "animation" ? "导入帧" : "导入图片"}</span>
+          <span>{mode === "animation" ? t("导入帧") : t("导入图片")}</span>
         </button>
         <div className="history-buttons">
           <button
             className="icon-button"
-            title="撤销 ⌘/Ctrl Z"
-            aria-label="撤销"
+            title={t("撤销 ⌘/Ctrl Z")}
+            aria-label={t("撤销")}
             disabled={!store.canUndo || !!busy}
             onClick={() => action(() => store.undo())}
           >
@@ -410,8 +428,8 @@ export default function Editor() {
           </button>
           <button
             className="icon-button"
-            title="重做 ⌘/Ctrl Shift Z"
-            aria-label="重做"
+            title={t("重做 ⌘/Ctrl Shift Z")}
+            aria-label={t("重做")}
             disabled={!store.canRedo || !!busy}
             onClick={() => action(() => store.redo())}
           >
@@ -425,11 +443,11 @@ export default function Editor() {
             disabled={!current || !!busy}
           >
             <Download size={16} />
-            <span>导出 PNG</span>
+            <span>{t("导出 PNG")}</span>
           </button>
           <button
             className="primary export-toggle"
-            aria-label="更多导出选项"
+            aria-label={t("更多导出选项")}
             onClick={() => setExportMenu(!exportMenu)}
             disabled={!images.length || !!busy}
           >
@@ -438,12 +456,16 @@ export default function Editor() {
           {exportMenu && (
             <div className="dropdown export-dropdown">
               <button onClick={() => exportImages(false)}>
-                当前{mode === "animation" ? "帧" : "图片"} PNG
+                {t(mode === "animation" ? "当前帧 PNG" : "当前图片 PNG")}
               </button>
               <button onClick={() => exportImages(true)}>
-                全部{mode === "animation" ? "帧" : "图片"} PNG / ZIP
+                {t(
+                  mode === "animation"
+                    ? "全部帧 PNG / ZIP"
+                    : "全部图片 PNG / ZIP",
+                )}
               </button>
-              <span>保留原尺寸与透明度</span>
+              <span>{t("保留原尺寸与透明度")}</span>
             </div>
           )}
         </div>
@@ -454,14 +476,14 @@ export default function Editor() {
         accept="image/png,.png"
         multiple
         className="sr-only"
-        aria-label="导入 PNG 文件"
+        aria-label={t("导入 PNG 文件")}
         data-testid="file-input"
         onChange={(e) => importFiles([...(e.target.files ?? [])])}
       />
       <div className="workspace">
         <aside className="tools-panel">
           <div className="section-title">
-            <h2>绘图工具</h2>
+            <h2>{t("绘图工具")}</h2>
             <span>TOOLS</span>
           </div>
           <div className="tools-grid">
@@ -483,7 +505,7 @@ export default function Editor() {
           <ColorPanel color={color} onChange={setColor} />
           <div className="sidebar-tip">
             <MousePointer2 size={15} />
-            <span>点击或拖动，修整每个像素</span>
+            <span>{t("点击或拖动，修整每个像素")}</span>
           </div>
         </aside>
         <section className="main-workspace">
@@ -499,9 +521,12 @@ export default function Editor() {
               <strong>
                 {current
                   ? mode === "animation"
-                    ? `第 ${images.findIndex((i) => i.id === current.id) + 1} 帧`
+                    ? t(
+                        "第 {0} 帧",
+                        images.findIndex((i) => i.id === current.id) + 1,
+                      )
                     : current.name
-                  : "工作画布"}
+                  : t("工作画布")}
               </strong>
               {current && (
                 <span>
@@ -509,7 +534,7 @@ export default function Editor() {
                 </span>
               )}
               {current && store.isDirty(current) && (
-                <span className="modified-dot" title="有未导出的修改" />
+                <span className="modified-dot" title={t("有未导出的修改")} />
               )}
             </div>
             <div className="canvas-actions">
@@ -519,11 +544,12 @@ export default function Editor() {
                   checked={grid}
                   onChange={(e) => setGrid(e.target.checked)}
                 />
-                <Grid2X2 size={14} /> 网格
+                <Grid2X2 size={14} />
+                {t("网格")}
               </label>
               <div className="zoom-control">
                 <button
-                  aria-label="缩小"
+                  aria-label={t("缩小")}
                   disabled={!current}
                   onClick={() => canvas.current?.zoom(0.8)}
                 >
@@ -531,7 +557,7 @@ export default function Editor() {
                 </button>
                 <span data-testid="zoom">{Math.round(zoom * 100)}%</span>
                 <button
-                  aria-label="放大"
+                  aria-label={t("放大")}
                   disabled={!current}
                   onClick={() => canvas.current?.zoom(1.25)}
                 >
@@ -543,7 +569,7 @@ export default function Editor() {
                 disabled={!current}
                 onClick={() => canvas.current?.fit()}
               >
-                适应画布
+                {t("适应画布")}
               </button>
             </div>
           </div>
@@ -565,48 +591,62 @@ export default function Editor() {
               onImport={() => input.current?.click()}
               onDrop={importFiles}
             />
-            {mode === "animation" && <AnimationPreview store={store} />}
+            <div
+              className={`preview-transition ${mode === "animation" ? "open" : ""}`}
+              aria-hidden={mode !== "animation"}
+            >
+              {mode === "animation" && <AnimationPreview store={store} />}
+            </div>
           </div>
           {(mode === "animation" || project.images.length > 1) && (
             <section className="asset-strip">
               <div className="strip-header">
                 <h2>
-                  {mode === "animation" ? "动画帧" : "图片列表"}{" "}
+                  {mode === "animation" ? t("动画帧") : t("图片列表")}{" "}
                   <span>
-                    {images.length} {mode === "animation" ? "帧" : "张图片"}
+                    {t(
+                      mode === "animation" ? "{0} 帧" : "{0} 张图片",
+                      images.length,
+                    )}
                   </span>
                 </h2>
                 <div className="strip-actions">
                   {mode === "animation" ? (
                     <button
-                      onClick={() => action(() => store.addBlank())}
+                      onClick={() =>
+                        action(() => store.addBlank(t("空白帧.png")))
+                      }
                       disabled={!project.animation || !!busy}
                     >
-                      <Plus size={14} /> 添加帧
+                      <Plus size={14} />
+                      {t("添加帧")}
                     </button>
                   ) : (
                     <button
                       onClick={() => input.current?.click()}
                       disabled={!!busy}
                     >
-                      <Plus size={14} /> 导入
+                      <Plus size={14} />
+                      {t("导入")}
                     </button>
                   )}
                   <button
-                    onClick={() => action(() => store.copy())}
+                    onClick={() => action(() => store.copy(t("-副本.png")))}
                     disabled={!current || !!busy}
                   >
-                    <Copy size={14} /> 复制
+                    <Copy size={14} />
+                    {t("复制")}
                   </button>
                   <button
                     onClick={() => action(() => store.remove())}
                     disabled={!current || !!busy}
                   >
-                    <Trash2 size={14} /> 删除
+                    <Trash2 size={14} />
+                    {t("删除")}
                   </button>
                   <button
                     className="icon-button"
-                    aria-label="向前移动"
+                    aria-label={t("向前移动")}
                     disabled={
                       !current || images[0]?.id === current.id || !!busy
                     }
@@ -616,7 +656,7 @@ export default function Editor() {
                   </button>
                   <button
                     className="icon-button"
-                    aria-label="向后移动"
+                    aria-label={t("向后移动")}
                     disabled={
                       !current || images.at(-1)?.id === current.id || !!busy
                     }
@@ -631,7 +671,9 @@ export default function Editor() {
                       disabled={!!busy}
                     >
                       <Film size={14} />
-                      {project.animation ? "加入动画帧" : "作为动画帧编辑"}
+                      {project.animation
+                        ? t("加入动画帧")
+                        : t("作为动画帧编辑")}
                       {selected.size > 0 && ` (${selected.size})`}
                     </button>
                   )}
@@ -662,7 +704,7 @@ export default function Editor() {
                   >
                     <button
                       className="asset-select"
-                      aria-label={`编辑 ${image.name}`}
+                      aria-label={t("编辑 {0}", image.name)}
                       onClick={() => action(() => store.select(image.id))}
                     >
                       <div className="asset-thumbnail checker">
@@ -686,7 +728,7 @@ export default function Editor() {
                     {mode === "images" && (
                       <button
                         className="multi-check"
-                        aria-label={`${selected.has(image.id) ? "取消选择" : "选择"} ${image.name}`}
+                        aria-label={`${selected.has(image.id) ? t("取消选择") : t("选择")} ${image.name}`}
                         onClick={() =>
                           setSelected((s) => {
                             const n = new Set(s);
@@ -708,7 +750,7 @@ export default function Editor() {
               </div>
               {mode === "images" && (
                 <p className="strip-tip">
-                  勾选图片可只将所选图片组成动画 · 拖动调整顺序
+                  {t("勾选图片可只将所选图片组成动画 · 拖动调整顺序")}
                 </p>
               )}
             </section>
@@ -723,7 +765,7 @@ export default function Editor() {
           <Info size={17} />
           <span>{message.text}</span>
           {message.error && (
-            <button aria-label="关闭提示" onClick={() => setMessage(null)}>
+            <button aria-label={t("关闭提示")} onClick={() => setMessage(null)}>
               <X size={15} />
             </button>
           )}
@@ -748,12 +790,12 @@ export default function Editor() {
               <Film size={25} />
             </div>
             <h2 id="conversion-title">
-              {project.animation ? "加入动画帧" : "将图片作为动画帧编辑"}
+              {project.animation ? t("加入动画帧") : t("将图片作为动画帧编辑")}
             </h2>
             <p>
-              按当前列表顺序使用 {candidateImages.length} 张图片。
+              {t("按当前列表顺序使用 {0} 张图片。", candidateImages.length)}
               <br />
-              保留所有像素修改，未参与的图片仍在图片列表中。
+              {t("保留所有像素修改，未参与的图片仍在图片列表中。")}
             </p>
             <div className="conversion-list">
               {candidateImages.map((i) => (
@@ -767,20 +809,24 @@ export default function Editor() {
             </div>
             {conversionMismatch && (
               <p className="conversion-error">
-                尺寸不一致。请选择相同尺寸的图片，不会自动裁切或缩放。
+                {t("尺寸不一致。请选择相同尺寸的图片，不会自动裁切或缩放。")}
                 {project.animation &&
-                  `现有帧尺寸为 ${project.animation.width} × ${project.animation.height}。`}
+                  t(
+                    "现有帧尺寸为 {0} × {1}。",
+                    project.animation.width,
+                    project.animation.height,
+                  )}
               </p>
             )}
             <div className="modal-actions">
-              <button onClick={() => setConversion(null)}>取消</button>
+              <button onClick={() => setConversion(null)}>{t("取消")}</button>
               <button
                 className="primary"
                 disabled={!!conversionMismatch || !candidateImages.length}
                 onClick={confirmConvert}
               >
                 <Check size={15} />{" "}
-                {project.animation ? "加入动画" : "进入动画编辑"}
+                {project.animation ? t("加入动画") : t("进入动画编辑")}
               </button>
             </div>
           </section>
@@ -794,13 +840,15 @@ export default function Editor() {
             aria-modal="true"
             aria-labelledby="reset-title"
           >
-            <h2 id="reset-title">清空当前项目？</h2>
+            <h2 id="reset-title">{t("清空当前项目？")}</h2>
             <p>
-              当前还有未导出的像素修改。清空操作将移除图片与历史，请先导出需要保留的图片。
+              {t(
+                "当前还有未导出的像素修改。清空操作将移除图片与历史，请先导出需要保留的图片。",
+              )}
             </p>
             <div className="modal-actions">
               <button className="primary" onClick={() => setResetDialog(false)}>
-                继续编辑
+                {t("继续编辑")}
               </button>
               <button
                 className="danger-button"
@@ -810,7 +858,7 @@ export default function Editor() {
                   setResetDialog(false);
                 }}
               >
-                确认清空
+                {t("确认清空")}
               </button>
             </div>
           </section>

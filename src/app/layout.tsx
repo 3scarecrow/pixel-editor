@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/i18n/LanguageProvider";
 export const metadata: Metadata = {
   metadataBase: new URL("https://dianxiu.top"),
   title: { default: "点修 · 在线像素图片编辑", template: "%s · 点修" },
@@ -13,7 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

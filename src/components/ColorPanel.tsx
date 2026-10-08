@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/i18n/LanguageProvider";
 import { useEffect, useRef, useState } from "react";
 import { hex, parseHex, type RGBA } from "@/core/model";
 import { hsvToRgb, rgbToHsv } from "@/core/color";
@@ -23,6 +24,7 @@ export function ColorPanel({
   color: RGBA;
   onChange: (c: RGBA) => void;
 }) {
+  const { t } = useLanguage();
   const hsv = rgbToHsv(color),
     [text, setText] = useState(hex(color)),
     [invalid, setInvalid] = useState(false),
@@ -47,7 +49,7 @@ export function ColorPanel({
   return (
     <section className="color-panel">
       <div className="section-title">
-        <h2>颜色</h2>
+        <h2>{t("颜色")}</h2>
         <span>COLOR</span>
       </div>
       <div className="color-picker">
@@ -56,7 +58,7 @@ export function ColorPanel({
           ref={area}
           role="slider"
           tabIndex={0}
-          aria-label="颜色饱和度与明度"
+          aria-label={t("颜色饱和度与明度")}
           aria-valuetext={`${Math.round(hsv.s * 100)}%, ${Math.round(hsv.v * 100)}%`}
           style={{ backgroundColor: `hsl(${hue.current},100%,50%)` }}
           onKeyDown={(e) => {
@@ -117,7 +119,7 @@ export function ColorPanel({
           min={0}
           max={359}
           value={Math.round(hue.current)}
-          aria-label="色相"
+          aria-label={t("色相")}
           onChange={(e) => {
             hue.current = +e.target.value;
             onChange(hsvToRgb(+e.target.value, hsv.s, hsv.v, color[3]));
@@ -128,10 +130,10 @@ export function ColorPanel({
         <label
           className="native-color"
           style={{ background: hex(color) }}
-          title="打开系统颜色选择器"
+          title={t("打开系统颜色选择器")}
         >
           <input
-            aria-label="系统颜色选择器"
+            aria-label={t("系统颜色选择器")}
             type="color"
             value={hex(color)}
             onChange={(e) => onChange(parseHex(e.target.value, color[3])!)}
@@ -139,7 +141,7 @@ export function ColorPanel({
         </label>
         <input
           className={invalid ? "invalid" : ""}
-          aria-label="HEX 颜色"
+          aria-label={t("HEX 颜色")}
           value={text}
           maxLength={7}
           onChange={(e) => setText(e.target.value)}
@@ -149,9 +151,11 @@ export function ColorPanel({
           }}
         />
       </div>
-      {invalid && <span className="field-error">请输入 6 位 HEX 颜色</span>}
+      {invalid && (
+        <span className="field-error">{t("请输入 6 位 HEX 颜色")}</span>
+      )}
       <div className="alpha-label">
-        <label htmlFor="alpha-number">透明度</label>
+        <label htmlFor="alpha-number">{t("透明度")}</label>
         <div>
           <input
             id="alpha-number"
@@ -175,7 +179,7 @@ export function ColorPanel({
       </div>
       <input
         className="alpha-slider"
-        aria-label="透明度滑块"
+        aria-label={t("透明度滑块")}
         type="range"
         min={0}
         max={255}
@@ -189,7 +193,7 @@ export function ColorPanel({
           <button
             key={p}
             title={p}
-            aria-label={`选择颜色 ${p}`}
+            aria-label={t("选择颜色 {0}", p)}
             className={hex(color) === p ? "active" : ""}
             style={{ background: p }}
             onClick={() => onChange(parseHex(p, color[3])!)}

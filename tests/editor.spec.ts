@@ -443,3 +443,127 @@ test("离开确认：未修改或已导出的项目正常返回首页", async ({
   await expect(page).toHaveURL("http://127.0.0.1:3102/");
   expect(dialogs).toEqual([]);
 });
+
+test("Homepage language selection persists in the editor and exported pixels remain intact", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "界面语言" }).selectOption("en");
+  await page.getByRole("link", { name: "Open editor" }).click();
+  await expect(page.getByRole("combobox")).toHaveCount(0);
+  await page.getByTestId("file-input").setInputFiles(file());
+  await expect(
+    page.getByRole("status").filter({ hasText: "Imported 1 images" }),
+  ).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(
+    page.getByRole("button", { name: "Export PNG", exact: true }),
+  ).toBeEnabled();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PNG", exact: true }).click();
+  const download = await downloadPromise;
+  const png = decode(
+    await (await import("node:fs/promises")).readFile((await download.path())!),
+  );
+  expect([...png.data.slice(0, 8)]).toEqual(rgba);
+  await page.getByTestId("file-input").setInputFiles({
+    name: "bad.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("invalid"),
+  });
+  await expect(page.locator(".toast.error")).toContainText(
+    "Not a valid PNG file",
+  );
+  await page.getByRole("link", { name: "Dianxiu home" }).click();
+  await expect(page.getByRole("link", { name: "Open editor" })).toBeVisible();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await page
+    .getByRole("combobox", { name: "Interface language" })
+    .selectOption("zh");
+  await expect(page.getByRole("link", { name: "打开编辑器" })).toBeVisible();
+});
+
+test("English animation controls and size errors are translated", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "界面语言" }).selectOption("en");
+  await page.getByRole("link", { name: "Open editor" }).click();
+  await page
+    .getByTestId("file-input")
+    .setInputFiles([file("a.png"), file("b.png")]);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Imported 2 images" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Animation", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Use 2 images in the current list order.",
+  );
+  await page
+    .getByRole("button", { name: "Edit animation", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Play", exact: true }),
+  ).toBeEnabled();
+  await page.getByTestId("file-input").setInputFiles(file("wrong.png", 8, 8));
+  await expect(page.locator(".toast.error")).toContainText(
+    "Animation frames must be 16 × 16",
+  );
+});
+
+test("first visit follows browser language and explicit choice overrides it", async ({
+  page,
+}) => {
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("dianxiu-language")))
+    .toBe("zh");
+  await page.evaluate(() => localStorage.removeItem("dianxiu-language"));
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "language", { get: () => "en-US" }),
+  );
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.getByRole("link", { name: "Open editor" })).toBeVisible();
+  await page.screenshot({ path: "/tmp/dianxiu-english-home.png" });
+  await page
+    .getByRole("combobox", { name: "Interface language" })
+    .selectOption("zh");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+  await expect(page.getByRole("link", { name: "打开编辑器" })).toBeVisible();
+});
+
+test("animation imports fit the final canvas size, including after a manually zoomed frame", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "动画编辑", exact: true }).click();
+  const assertFitted = async () => {
+    await expect
+      .poll(async () => {
+        const box = (await page.getByTestId("pixel-canvas").boundingBox())!;
+        const expected = Math.round(
+          Math.max(
+            0.125,
+            Math.min(16, (box.width - 96) / 512, (box.height - 64) / 512),
+          ) * 100,
+        );
+        return (
+          (await page.getByTestId("zoom").textContent()) === `${expected}%`
+        );
+      })
+      .toBe(true);
+  };
+  await upload(page, [file("first.png", 512, 512)]);
+  await assertFitted();
+  await page.getByRole("button", { name: "放大", exact: true }).click();
+  await upload(page, [file("second.png", 512, 512)]);
+  await assertFitted();
+  await page.getByRole("button", { name: "图片编辑", exact: true }).click();
+  await page.getByRole("button", { name: "动画编辑", exact: true }).click();
+  await expect(page.locator(".preview-transition")).toHaveCSS("opacity", "1");
+  await expect(page.locator(".mode-switch")).toHaveAttribute(
+    "data-mode",
+    "animation",
+  );
+});

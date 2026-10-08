@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/i18n/LanguageProvider";
 import { useState } from "react";
 import { ArrowLeftRight, RotateCcw, Check } from "lucide-react";
 const fish = [
@@ -21,11 +22,12 @@ const colors: Record<string, string> = {
   w: "#fff3d6",
 };
 export function PixelFish({ broken = false }: { broken?: boolean }) {
+  const { t } = useLanguage();
   return (
     <svg
       viewBox="0 0 24 16"
       shapeRendering="crispEdges"
-      aria-label={broken ? "带有错误颜色的像素鱼" : "修整后的像素鱼"}
+      aria-label={broken ? t("带有错误颜色的像素鱼") : t("修整后的像素鱼")}
     >
       {fish.flatMap((row, y) =>
         [...row].map((c, x) =>
@@ -51,13 +53,14 @@ export function PixelFish({ broken = false }: { broken?: boolean }) {
   );
 }
 export default function RepairDemo() {
+  const { t } = useLanguage();
   const [position, setPosition] = useState(50),
     [fixed, setFixed] = useState(false);
   return (
     <section
       className="repair-demo"
       id="repair-example"
-      aria-label="交互式像素修整示例"
+      aria-label={t("交互式像素修整示例")}
     >
       <div className="comparison checker">
         <div className="comparison-image">
@@ -70,9 +73,9 @@ export default function RepairDemo() {
           <PixelFish broken={!fixed} />
         </div>
         <span className="compare-label before">
-          {fixed ? "原图已修整" : "原图"}
+          {fixed ? t("原图已修整") : t("原图")}
         </span>
-        <span className="compare-label after">修整后</span>
+        <span className="compare-label after">{t("修整后")}</span>
         <div className="compare-divider" style={{ left: `${position}%` }}>
           <span>
             <ArrowLeftRight size={18} />
@@ -84,18 +87,18 @@ export default function RepairDemo() {
           min="5"
           max="95"
           value={position}
-          aria-label="修整前后对比滑杆"
+          aria-label={t("修整前后对比滑杆")}
           onChange={(e) => setPosition(+e.target.value)}
         />
       </div>
       <div className="pixel-details">
         <div>
-          <span>错误像素</span>
+          <span>{t("错误像素")}</span>
           <button
             className={`pixel-patch ${fixed ? "fixed" : ""}`}
-            aria-label="修正示例中的错误像素"
+            aria-label={t("修正示例中的错误像素")}
             onClick={() => setFixed(true)}
-            title="点击修正两个错误像素"
+            title={t("点击修正两个错误像素")}
           >
             <i />
             <i />
@@ -109,7 +112,7 @@ export default function RepairDemo() {
           </button>
         </div>
         <div>
-          <span>精准修正</span>
+          <span>{t("精准修正")}</span>
           <div className="pixel-patch fixed">
             <i />
             <i />
@@ -127,10 +130,11 @@ export default function RepairDemo() {
         <span aria-live="polite">
           {fixed ? (
             <>
-              <Check size={14} /> 错误像素已修正
+              <Check size={14} />
+              {t("错误像素已修正")}
             </>
           ) : (
-            "拖动对比 · 点击错误像素体验修整"
+            t("拖动对比 · 点击错误像素体验修整")
           )}
         </span>
         <button
@@ -138,11 +142,12 @@ export default function RepairDemo() {
             setFixed(false);
             setPosition(50);
           }}
-          aria-label="重置修整示例"
+          aria-label={t("重置修整示例")}
         >
-          <RotateCcw size={14} /> 重置
+          <RotateCcw size={14} />
+          {t("重置")}
         </button>
-        <small>示例 · PNG</small>
+        <small>{t("示例 · PNG")}</small>
       </div>
     </section>
   );

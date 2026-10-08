@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/i18n/LanguageProvider";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { ImagePlus } from "lucide-react";
 import {
@@ -20,7 +21,13 @@ type Props = {
   tool: string;
   color: RGBA;
   grid: boolean;
-  onHover: (p: { x: number; y: number; color: RGBA } | null) => void;
+  onHover: (
+    p: {
+      x: number;
+      y: number;
+      color: RGBA;
+    } | null,
+  ) => void;
   onView: (zoom: number) => void;
   onPick: (color: RGBA) => void;
   onImport: () => void;
@@ -28,6 +35,7 @@ type Props = {
 };
 export const PixelCanvas = forwardRef<CanvasHandle, Props>(
   function PixelCanvas(props, ref) {
+    const { t } = useLanguage();
     const host = useRef<HTMLDivElement>(null),
       canvas = useRef<HTMLCanvasElement>(null),
       overlay = useRef<HTMLCanvasElement>(null);
@@ -35,17 +43,35 @@ export const PixelCanvas = forwardRef<CanvasHandle, Props>(
     latest.current = props;
     const renderer = useRef<Canvas2DRenderer | null>(null),
       view = useRef<View>({ zoom: 8, panX: 0, panY: 0 }),
-      hover = useRef<{ x: number; y: number } | null>(null),
+      hover = useRef<{
+        x: number;
+        y: number;
+      } | null>(null),
       raf = useRef(0),
-      space = useRef(false);
+      space = useRef(false),
+      viewImageId = useRef<string | null>(null),
+      autoFit = useRef(false);
     const gesture = useRef<{
       pointer: number;
       image: PixelImage;
       tool: string;
       color: RGBA;
-      previous: { x: number; y: number };
-      changes: Map<number, { before: RGBA; after: RGBA }>;
-      pan?: { x: number; y: number; view: View };
+      previous: {
+        x: number;
+        y: number;
+      };
+      changes: Map<
+        number,
+        {
+          before: RGBA;
+          after: RGBA;
+        }
+      >;
+      pan?: {
+        x: number;
+        y: number;
+        view: View;
+      };
     } | null>(null);
     const cursor = () => {
       const c = overlay.current;
@@ -100,7 +126,8 @@ export const PixelCanvas = forwardRef<CanvasHandle, Props>(
         draw();
       });
     };
-    const saveView = () => {
+    const saveView = (fitted = false) => {
+      autoFit.current = fitted;
       const i = latest.current.image;
       if (i) latest.current.store.views.set(i.id, { ...view.current });
       latest.current.onView(view.current.zoom);
@@ -123,7 +150,7 @@ export const PixelCanvas = forwardRef<CanvasHandle, Props>(
         panX: (h.clientWidth - i.width * z) / 2,
         panY: (h.clientHeight - i.height * z) / 2,
       };
-      saveView();
+      saveView(true);
     };
     const zoom = (
       factor: number,
@@ -152,16 +179,26 @@ export const PixelCanvas = forwardRef<CanvasHandle, Props>(
     useImperativeHandle(ref, () => ({ fit, zoom, finish }));
     useEffect(() => {
       renderer.current = new Canvas2DRenderer();
-      let previousSize: { width: number; height: number } | null = null;
+      let previousSize: {
+        width: number;
+        height: number;
+      } | null = null;
       const resize = () => {
         const h = host.current;
         if (!h) return;
-        if (previousSize && latest.current.image) {
-          view.current.panX += (h.clientWidth - previousSize.width) / 2;
-          view.current.panY += (h.clientHeight - previousSize.height) / 2;
-          latest.current.store.views.set(latest.current.image.id, {
-            ...view.current,
-          });
+        if (
+          previousSize &&
+          latest.current.image &&
+          viewImageId.current === latest.current.image.id
+        ) {
+          if (autoFit.current) fit();
+          else {
+            view.current.panX += (h.clientWidth - previousSize.width) / 2;
+            view.current.panY += (h.clientHeight - previousSize.height) / 2;
+            latest.current.store.views.set(latest.current.image.id, {
+              ...view.current,
+            });
+          }
         }
         previousSize = { width: h.clientWidth, height: h.clientHeight };
         for (const c of [canvas.current, overlay.current]) {
@@ -198,6 +235,7 @@ export const PixelCanvas = forwardRef<CanvasHandle, Props>(
         if (
           e.code === "Space" &&
           !(e.target instanceof HTMLInputElement) &&
+          !(e.target instanceof HTMLSelectElement) &&
           !(e.target instanceof HTMLButtonElement) &&
           !(e.target instanceof HTMLAnchorElement)
         ) {
@@ -223,6 +261,8 @@ export const PixelCanvas = forwardRef<CanvasHandle, Props>(
       renderer.current?.setImage(props.image);
       hover.current = null;
       props.onHover(null);
+      viewImageId.current = props.image?.id ?? null;
+      autoFit.current = false;
       if (props.image) {
         const saved = props.store.views.get(props.image.id);
         if (saved) {
@@ -311,7 +351,7 @@ export const PixelCanvas = forwardRef<CanvasHandle, Props>(
           ref={overlay}
           className="pixel-overlay"
           data-testid="pixel-canvas"
-          aria-label="像素编辑画布"
+          aria-label={t("像素编辑画布")}
           tabIndex={0}
           onContextMenu={(e) => e.preventDefault()}
           onPointerDown={(e) => {
@@ -394,21 +434,23 @@ export const PixelCanvas = forwardRef<CanvasHandle, Props>(
         {!props.image && (
           <div className="empty-canvas">
             <p>
-              导入 PNG，放大画布，修整细节。
+              {t("导入 PNG，放大画布，修整细节。")}
               <br />
-              图片仅在你的设备上处理。
+              {t("图片仅在你的设备上处理。")}
             </p>
             <button className="primary" onClick={props.onImport}>
               <ImagePlus size={16} />{" "}
               {props.store.project.mode === "animation"
-                ? "导入动画帧"
-                : "导入图片"}
+                ? t("导入动画帧")
+                : t("导入图片")}
             </button>
-            <span className="empty-hint">或将 PNG 拖到这里 · 支持多张图片</span>
+            <span className="empty-hint">
+              {t("或将 PNG 拖到这里 · 支持多张图片")}
+            </span>
           </div>
         )}
         {props.image && (
-          <div className="canvas-hint">滚轮缩放 · 空格拖动平移</div>
+          <div className="canvas-hint">{t("滚轮缩放 · 空格拖动平移")}</div>
         )}
       </div>
     );

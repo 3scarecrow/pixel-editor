@@ -304,11 +304,11 @@ export class EditorStore {
         p.mode = mode;
       });
   }
-  copy() {
+  copy(suffix = "-副本.png") {
     const i = this.current;
     if (!i) return;
     const c = createImage(
-      i.name.replace(/\.png$/i, "") + "-副本.png",
+      i.name.replace(/\.png$/i, "") + suffix,
       i.width,
       i.height,
       i.pixels.slice(),
@@ -325,10 +325,10 @@ export class EditorStore {
       }
     });
   }
-  addBlank() {
+  addBlank(name = "空白帧.png") {
     const a = this.project.animation;
     if (!a) throw Error("请先导入至少一帧以确定尺寸");
-    const i = createImage("空白帧.png", a.width, a.height);
+    const i = createImage(name, a.width, a.height);
     i.revision = ++this.revision;
     this.import([i]);
   }
